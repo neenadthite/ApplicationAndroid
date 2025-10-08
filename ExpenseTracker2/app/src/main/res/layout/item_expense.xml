@@ -1,0 +1,34 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="8dp">
+
+    <TextView
+        android:id="@+id/itemDate"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="2025-10-08"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/itemCategory"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Food" />
+
+    <TextView
+        android:id="@+id/itemAmount"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="₹250.00"
+        android:textColor="@android:color/holo_green_dark" />
+
+    <TextView
+        android:id="@+id/itemNote"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Lunch with friends"
+        android:textColor="@android:color/darker_gray"
+        android:textSize="12sp" />
+</LinearLayout>
