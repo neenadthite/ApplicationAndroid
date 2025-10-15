@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.*
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
@@ -19,6 +20,7 @@ import java.time.LocalDate
 class CategoryListFragment : Fragment() {
 
     private lateinit var recyclerView: RecyclerView
+    private lateinit var totalText: TextView
     private lateinit var dao: com.tools.expensetracker.data.ExpenseDao
 
     override fun onCreateView(
@@ -26,9 +28,13 @@ class CategoryListFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         val view = inflater.inflate(R.layout.fragment_category_list, container, false)
+
         recyclerView = view.findViewById(R.id.categoryRecycler)
+        totalText = view.findViewById(R.id.totalText)
+
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
         dao = ExpenseDatabase.getDatabase(requireContext()).expenseDao()
+
         loadCurrentMonthExpenses()
         return view
     }
@@ -40,9 +46,13 @@ class CategoryListFragment : Fragment() {
 
         lifecycleScope.launch {
             val list = dao.getByCurrentMonth(month, year)
+            val total = list.sumOf { it.amount }
+
             recyclerView.adapter = ExpenseAdapter(list) { expense ->
                 showEditDialog(expense)
             }
+
+            totalText.text = "Total Expense: ₹%.2f".format(total)
         }
     }
 
