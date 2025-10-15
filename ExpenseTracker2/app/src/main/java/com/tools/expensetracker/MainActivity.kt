@@ -19,6 +19,7 @@ import android.content.pm.PackageManager
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.tools.expensetracker.utils.SmsExpenseReader
+import com.google.android.material.color.DynamicColors
 
 class MainActivity : AppCompatActivity() {
 
@@ -35,8 +36,13 @@ class MainActivity : AppCompatActivity() {
     private val SMS_PERMISSION_CODE = 1001
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        DynamicColors.applyToActivitiesIfAvailable(application)
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        try {
+            setContentView(R.layout.activity_main)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
 
         dateInput = findViewById(R.id.dateInput)
         categorySpinner = findViewById(R.id.categorySpinner)

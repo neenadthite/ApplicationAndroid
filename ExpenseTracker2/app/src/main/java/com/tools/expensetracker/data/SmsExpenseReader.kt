@@ -40,7 +40,7 @@ object SmsExpenseReader {
 
     private fun detectCategory(body: String): String {
         return when {
-            body.contains("fuel", true) -> "Transport"
+            body.contains("fuel", true) || body.contains("IRCTC", true) -> "Transport"
             body.contains("upi", true) || body.contains("merchant", true) -> "DailyNeeds"
             body.contains("school", true) || body.contains("fee", true) -> "Education"
             else -> "Food"
