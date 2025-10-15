@@ -14,12 +14,16 @@ import com.tools.expensetracker.data.Expense
 import com.tools.expensetracker.data.ExpenseDatabase
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.Month
+import java.time.format.TextStyle
+import java.util.*
 
 class CategoryListFragment : Fragment() {
 
     private lateinit var recyclerView: RecyclerView
     private lateinit var totalText: TextView
     private lateinit var monthSelector: Spinner
+    private lateinit var yearSelector: Spinner
     private lateinit var dao: com.tools.expensetracker.data.ExpenseDao
 
     override fun onCreateView(
@@ -31,55 +35,69 @@ class CategoryListFragment : Fragment() {
         recyclerView = view.findViewById(R.id.categoryRecycler)
         totalText = view.findViewById(R.id.totalText)
         monthSelector = view.findViewById(R.id.monthSelector)
+        yearSelector = view.findViewById(R.id.yearSelector)
 
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
         dao = ExpenseDatabase.getDatabase(requireContext()).expenseDao()
 
-        setupMonthSelector()
+        setupSelectors()
         return view
     }
 
-    private fun setupMonthSelector() {
-        val months = listOf(
-            "01 - January", "02 - February", "03 - March", "04 - April",
-            "05 - May", "06 - June", "07 - July", "08 - August",
-            "09 - September", "10 - October", "11 - November", "12 - December"
-        )
+    private fun setupSelectors() {
+        val months = Month.values().map {
+            it.getDisplayName(TextStyle.FULL, Locale.getDefault())
+        }
 
-        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, months)
-        monthSelector.adapter = adapter
+        val years = (2020..LocalDate.now().year).map { it.toString() }.reversed()
 
-        // Select current month by default
+        val monthAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, months)
+        val yearAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, years)
+
+        monthSelector.adapter = monthAdapter
+        yearSelector.adapter = yearAdapter
+
         val currentMonthIndex = LocalDate.now().monthValue - 1
         monthSelector.setSelection(currentMonthIndex)
+        yearSelector.setSelection(0) // current year (reversed list)
+
+        val reloadData: () -> Unit = {
+            val selectedMonthName = monthSelector.selectedItem.toString()
+            val selectedMonthNumber = Month.valueOf(selectedMonthName.uppercase()).value
+            val selectedYear = yearSelector.selectedItem.toString()
+            loadExpensesByMonth(selectedMonthNumber, selectedYear)
+        }
 
         monthSelector.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                val month = months[position].substring(0, 2)
-                loadExpensesByMonth(month)
-            }
-
-            override fun onNothingSelected(parent: AdapterView<*>?) {}
+            override fun onItemSelected(p0: AdapterView<*>?, p1: View?, p2: Int, p3: Long) = reloadData()
+            override fun onNothingSelected(p0: AdapterView<*>?) {}
         }
+
+        yearSelector.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(p0: AdapterView<*>?, p1: View?, p2: Int, p3: Long) = reloadData()
+            override fun onNothingSelected(p0: AdapterView<*>?) {}
+        }
+
+        reloadData() // load initial data
     }
 
-    private fun loadExpensesByMonth(month: String) {
-        val year = LocalDate.now().year.toString()
+    private fun loadExpensesByMonth(month: Int, year: String) {
+        val monthStr = "%02d".format(month)
 
         lifecycleScope.launch {
-            val list = dao.getByCurrentMonth(month, year)
+            val list = dao.getByCurrentMonth(monthStr, year)
             val total = list.sumOf { it.amount }
 
             recyclerView.adapter = ExpenseAdapter(list) { expense ->
                 showEditDialog(expense)
             }
 
-            totalText.text = "Total Expense: ₹%.2f".format(total)
+            totalText.text = "Total for $year ${Month.of(month).getDisplayName(TextStyle.FULL, Locale.getDefault())}: ₹%.2f".format(total)
 
             when {
-                total < 5000 -> totalText.setBackgroundColor(Color.parseColor("#C8E6C9")) // Green
-                total < 10000 -> totalText.setBackgroundColor(Color.parseColor("#FFF59D")) // Yellow
-                else -> totalText.setBackgroundColor(Color.parseColor("#FFCDD2")) // Red
+                total < 5000 -> totalText.setBackgroundColor(Color.parseColor("#C8E6C9"))
+                total < 10000 -> totalText.setBackgroundColor(Color.parseColor("#FFF59D"))
+                else -> totalText.setBackgroundColor(Color.parseColor("#FFCDD2"))
             }
         }
     }
@@ -112,8 +130,8 @@ class CategoryListFragment : Fragment() {
                 )
                 lifecycleScope.launch {
                     dao.insert(updated)
-                    val month = "%02d".format(expense.date.monthValue)
-                    loadExpensesByMonth(month)
+                    val month = expense.date.monthValue
+                    loadExpensesByMonth(month, expense.date.year.toString())
                     Toast.makeText(requireContext(), "Updated!", Toast.LENGTH_SHORT).show()
                 }
             }
