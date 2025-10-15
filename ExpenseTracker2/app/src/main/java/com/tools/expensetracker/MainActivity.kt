@@ -1,159 +1,126 @@
 package com.tools.expensetracker
 
+import android.app.DatePickerDialog
 import android.os.Bundle
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
+import androidx.lifecycle.lifecycleScope
+import com.google.android.material.bottomnavigation.BottomNavigationView
+import com.tools.expensetracker.data.Expense
+import com.tools.expensetracker.data.ExpenseDatabase
+import com.tools.expensetracker.ui.CategoryListFragment
+import com.tools.expensetracker.ui.ChartFragment
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.util.*
 
-// -----------------------------
-// Expense Data Model
-// -----------------------------
-data class Expense(
-    val id: Long,
-    val date: LocalDate,
-    val category: String,
-    val amount: Double,
-    val note: String
-)
-
-// -----------------------------
-// Expense Repository (in-memory)
-// -----------------------------
-object ExpenseStore {
-    private var nextId = 1L
-    private val expenses = mutableListOf<Expense>()
-
-    fun add(date: LocalDate, category: String, amount: Double, note: String) {
-        val expense = Expense(nextId++, date, category, amount, note)
-        expenses.add(expense)
-    }
-
-    fun all(): List<Expense> = expenses.toList()
-
-    fun total(): Double = expenses.sumOf { it.amount }
-}
-
-// -----------------------------
-// RecyclerView Adapter
-// -----------------------------
-class ExpenseAdapter(private val data: List<Expense>) :
-    RecyclerView.Adapter<ExpenseAdapter.ExpenseViewHolder>() {
-
-    inner class ExpenseViewHolder(itemView: android.view.View) :
-        RecyclerView.ViewHolder(itemView) {
-        val date: TextView = itemView.findViewById(R.id.itemDate)
-        val category: TextView = itemView.findViewById(R.id.itemCategory)
-        val amount: TextView = itemView.findViewById(R.id.itemAmount)
-        val note: TextView = itemView.findViewById(R.id.itemNote)
-    }
-
-    override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int): ExpenseViewHolder {
-        val view = android.view.LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_expense, parent, false)
-        return ExpenseViewHolder(view)
-    }
-
-    override fun onBindViewHolder(holder: ExpenseViewHolder, position: Int) {
-        val expense = data[position]
-        holder.date.text = expense.date.toString()
-        holder.category.text = expense.category
-        holder.amount.text = "₹%.2f".format(expense.amount)
-        holder.note.text = expense.note
-    }
-
-    override fun getItemCount(): Int = data.size
-}
-
-// -----------------------------
-// Main Activity
-// -----------------------------
 class MainActivity : AppCompatActivity() {
 
     private lateinit var dateInput: EditText
-    private lateinit var categoryInput: EditText
+    private lateinit var categorySpinner: Spinner
     private lateinit var amountInput: EditText
     private lateinit var noteInput: EditText
     private lateinit var addButton: Button
-    private lateinit var totalText: TextView
-    private lateinit var recyclerView: RecyclerView
-    private lateinit var viewAllButton: Button
-    private lateinit var filterButton: Button
-    private lateinit var exportButton: Button
+    private lateinit var bottomNav: BottomNavigationView
 
-    private val dateFmt: DateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE
+    private val dateFmt = DateTimeFormatter.ISO_LOCAL_DATE
+    private val categoryList = listOf("Food", "Transport", "Education", "DailyNeeds")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // Bind views
         dateInput = findViewById(R.id.dateInput)
-        categoryInput = findViewById(R.id.categoryInput)
+        categorySpinner = findViewById(R.id.categorySpinner)
         amountInput = findViewById(R.id.amountInput)
         noteInput = findViewById(R.id.noteInput)
         addButton = findViewById(R.id.addButton)
-        totalText = findViewById(R.id.totalText)
-        recyclerView = findViewById(R.id.expenseList)
-        viewAllButton = findViewById(R.id.viewAllButton)
-        filterButton = findViewById(R.id.filterButton)
-        exportButton = findViewById(R.id.exportButton)
+        bottomNav = findViewById(R.id.bottomNav)
 
-        recyclerView.layoutManager = LinearLayoutManager(this)
-        updateList()
+        // Date picker
+        dateInput.setOnClickListener {
+            val today = Calendar.getInstance()
+            val picker = DatePickerDialog(
+                this,
+                { _, year, month, day ->
+                    val date = LocalDate.of(year, month + 1, day)
+                    dateInput.setText(date.toString())
+                },
+                today.get(Calendar.YEAR),
+                today.get(Calendar.MONTH),
+                today.get(Calendar.DAY_OF_MONTH)
+            )
+            picker.show()
+        }
 
-        // Add Expense Button
-        addButton.setOnClickListener {
-            val dateStr = dateInput.text.toString()
-            val category = categoryInput.text.toString()
-            val amountStr = amountInput.text.toString()
-            val note = noteInput.text.toString()
+        // Category dropdown
+        val adapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_spinner_dropdown_item,
+            categoryList
+        )
+        categorySpinner.adapter = adapter
 
-            if (dateStr.isBlank() || category.isBlank() || amountStr.isBlank()) {
-                Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
+        addButton.setOnClickListener { addExpense() }
+
+        // Bottom navigation
+        bottomNav.setOnItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.nav_all -> {
+                    supportFragmentManager.beginTransaction()
+                        .replace(R.id.fragmentContainer, CategoryListFragment())
+                        .commit()
+                    true
+                }
+
+                R.id.nav_chart -> {
+                    supportFragmentManager.beginTransaction()
+                        .replace(R.id.fragmentContainer, ChartFragment())
+                        .commit()
+                    true
+                }
+
+                else -> false
             }
+        }
 
+        bottomNav.selectedItemId = R.id.nav_all
+    }
+
+    private fun addExpense() {
+        val dateStr = dateInput.text.toString()
+        val category = categorySpinner.selectedItem.toString()
+        val amountStr = amountInput.text.toString()
+        val note = noteInput.text.toString()
+
+        if (dateStr.isBlank() || amountStr.isBlank()) {
+            Toast.makeText(this, "Please fill all required fields", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        lifecycleScope.launch {
             try {
-                val date = LocalDate.parse(dateStr, dateFmt)
-                val amount = amountStr.toDouble()
-                ExpenseStore.add(date, category, amount, note)
+                val dao = ExpenseDatabase.getDatabase(this@MainActivity).expenseDao()
+                val expense = Expense(
+                    date = LocalDate.parse(dateStr, dateFmt),
+                    category = category,
+                    amount = amountStr.toDouble(),
+                    note = note
+                )
+                dao.insert(expense)
                 clearInputs()
-                updateList()
-                Toast.makeText(this, "Expense added!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@MainActivity, "Expense added!", Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
-                Toast.makeText(this, "Invalid input format", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@MainActivity, "Invalid input", Toast.LENGTH_SHORT).show()
             }
-        }
-
-        // View All Button
-        viewAllButton.setOnClickListener {
-            updateList()
-        }
-
-        // Filter Button (basic placeholder)
-        filterButton.setOnClickListener {
-            Toast.makeText(this, "Filter feature coming soon!", Toast.LENGTH_SHORT).show()
-        }
-
-        // Export Button (basic placeholder)
-        exportButton.setOnClickListener {
-            Toast.makeText(this, "Export to CSV feature coming soon!", Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun clearInputs() {
         dateInput.text.clear()
-        categoryInput.text.clear()
         amountInput.text.clear()
         noteInput.text.clear()
-    }
-
-    private fun updateList() {
-        val data = ExpenseStore.all()
-        recyclerView.adapter = ExpenseAdapter(data)
-        totalText.text = "Total: ₹%.2f".format(ExpenseStore.total())
+        categorySpinner.setSelection(0)
     }
 }
