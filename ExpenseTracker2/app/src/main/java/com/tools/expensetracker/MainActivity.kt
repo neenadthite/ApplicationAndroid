@@ -18,11 +18,8 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.fragment.app.Fragment
 import com.tools.expensetracker.utils.SmsExpenseReader
 import com.google.android.material.color.DynamicColors
-import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.tools.expensetracker.ui.AddExpenseDialogFragment
 
 class MainActivity : AppCompatActivity() {
 
@@ -46,9 +43,6 @@ class MainActivity : AppCompatActivity() {
         } catch (e: Exception) {
             e.printStackTrace()
         }
-
-        // Default fragment: Pie chart for current month
-        loadFragment(ChartFragment())
 
         dateInput = findViewById(R.id.dateInput)
         categorySpinner = findViewById(R.id.categorySpinner)
@@ -99,16 +93,24 @@ class MainActivity : AppCompatActivity() {
         // Bottom navigation
         bottomNav.setOnItemSelectedListener { item ->
             when (item.itemId) {
-                R.id.nav_home -> loadFragment(ChartFragment())
-                R.id.nav_categories -> loadFragment(CategoryListFragment())
+                R.id.nav_all -> {
+                    supportFragmentManager.beginTransaction()
+                        .replace(R.id.fragmentContainer, CategoryListFragment())
+                        .commit()
+                    true
+                }
+
+                R.id.nav_chart -> {
+                    supportFragmentManager.beginTransaction()
+                        .replace(R.id.fragmentContainer, ChartFragment())
+                        .commit()
+                    true
+                }
+
+                else -> false
             }
-            true
         }
 
-        val fab = findViewById<FloatingActionButton>(R.id.fabAddExpense)
-        fab.setOnClickListener {
-            AddExpenseDialogFragment().show(supportFragmentManager, "AddExpenseDialog")
-        }
         bottomNav.selectedItemId = R.id.nav_all
     }
 
@@ -153,12 +155,5 @@ class MainActivity : AppCompatActivity() {
             != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.READ_SMS), SMS_PERMISSION_CODE)
         }
-    }
-
-
-    private fun loadFragment(fragment: Fragment) {
-        supportFragmentManager.beginTransaction()
-            .replace(R.id.fragmentContainer, fragment)
-            .commit()
     }
 }
