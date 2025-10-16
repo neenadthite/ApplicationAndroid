@@ -3,8 +3,12 @@ package com.tools.expensetracker.data
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import java.time.LocalDate
+import androidx.room.Index
 
-@Entity(tableName = "expenses")
+@Entity(
+    tableName = "expenses",
+    indices = [Index(value = ["date", "amount", "note", "category"], unique = true)]
+)
 data class Expense(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val date: LocalDate,

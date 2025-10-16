@@ -3,10 +3,11 @@ package com.tools.expensetracker.data
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.OnConflictStrategy
 
 @Dao
 interface ExpenseDao {
-    @Insert
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(expense: Expense)
 
     @Query("SELECT * FROM expenses ORDER BY date DESC")
@@ -19,4 +20,10 @@ interface ExpenseDao {
     @Query("DELETE FROM expenses WHERE id = :id")
     suspend fun deleteById(id: Long)
 
+    // Check if the same entry exists
+    @Query("""
+        SELECT COUNT(*) FROM expenses
+        WHERE amount = :amount AND note = :note AND category = :category
+    """)
+    suspend fun exists( amount: Double, note: String, category: String): Int
 }
