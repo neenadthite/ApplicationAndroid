@@ -1,9 +1,11 @@
 package com.tools.expensetracker.data
 
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.OnConflictStrategy
+import androidx.room.Update
 
 @Dao
 interface ExpenseDao {
@@ -26,4 +28,12 @@ interface ExpenseDao {
         WHERE amount = :amount AND note = :note AND category = :category
     """)
     suspend fun exists( amount: Double, note: String, category: String): Int
+
+     // Update an existing expense entry.
+    @Update
+    suspend fun update(expense: Expense)
+
+    // Delete a specific expense entry.
+    @Delete
+    suspend fun delete(expense: Expense)
 }

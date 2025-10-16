@@ -26,6 +26,7 @@ class CategoryListFragment : Fragment() {
     private lateinit var yearSelector: Spinner
     private lateinit var dao: com.tools.expensetracker.data.ExpenseDao
 
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -88,9 +89,12 @@ class CategoryListFragment : Fragment() {
             val list = dao.getByCurrentMonth(monthStr, year)
             val total = list.sumOf { it.amount }
 
-            recyclerView.adapter = ExpenseAdapter(list) { expense ->
-                showEditDialog(expense)
-            }
+            val adapter = ExpenseAdapter(
+                expenses = list.toMutableList(),
+                onEditClick = { expense -> showEditDialog(expense) },
+                onDeleteClick = { expense -> confirmDelete(expense) }
+            )
+            recyclerView.adapter = adapter
 
             totalText.text = "Total for $year ${Month.of(month).getDisplayName(TextStyle.FULL, Locale.getDefault())}: ₹%.2f".format(total)
 
@@ -138,4 +142,29 @@ class CategoryListFragment : Fragment() {
             .setNegativeButton("Cancel", null)
             .show()
     }
+
+    // Confirm delete
+    private fun confirmDelete(expense: Expense) {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Delete Expense")
+            .setMessage("Are you sure you want to delete this expense?")
+            .setPositiveButton("Delete") { _, _ ->
+                lifecycleScope.launch {
+                    dao.delete(expense)
+                    Toast.makeText(requireContext(), "Deleted!", Toast.LENGTH_SHORT).show()
+                    refreshList()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    // Refresh after edit/delete
+    private fun refreshList() {
+        val selectedMonthName = monthSelector.selectedItem.toString()
+        val selectedMonthNumber = Month.valueOf(selectedMonthName.uppercase()).value
+        val selectedYear = yearSelector.selectedItem.toString()
+        loadExpensesByMonth(selectedMonthNumber, selectedYear)
+    }
+
 }

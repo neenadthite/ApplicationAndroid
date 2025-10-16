@@ -3,6 +3,7 @@ package com.tools.expensetracker.ui
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageButton
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.tools.expensetracker.R
@@ -10,11 +11,12 @@ import com.tools.expensetracker.data.Expense
 
 /**
  * RecyclerView Adapter for displaying expenses
- * Supports item click for editing an expense
+ * Supports editing and deleting each item
  */
 class ExpenseAdapter(
-    private val expenses: List<Expense>,
-    private val onItemClick: (Expense) -> Unit
+    private val expenses: MutableList<Expense>,
+    private val onEditClick: (Expense) -> Unit,
+    private val onDeleteClick: (Expense) -> Unit
 ) : RecyclerView.Adapter<ExpenseAdapter.ExpenseViewHolder>() {
 
     inner class ExpenseViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -22,6 +24,7 @@ class ExpenseAdapter(
         val categoryText: TextView = itemView.findViewById(R.id.itemCategory)
         val amountText: TextView = itemView.findViewById(R.id.itemAmount)
         val noteText: TextView = itemView.findViewById(R.id.itemNote)
+        val deleteButton: ImageButton = itemView.findViewById(R.id.deleteButton)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ExpenseViewHolder {
@@ -37,10 +40,11 @@ class ExpenseAdapter(
         holder.amountText.text = "₹%.2f".format(expense.amount)
         holder.noteText.text = expense.note
 
-        // handle click to edit
-        holder.itemView.setOnClickListener {
-            onItemClick(expense)
-        }
+        // Edit on tapping the item
+        holder.itemView.setOnClickListener { onEditClick(expense) }
+
+        // Delete button
+        holder.deleteButton.setOnClickListener { onDeleteClick(expense) }
     }
 
     override fun getItemCount(): Int = expenses.size
