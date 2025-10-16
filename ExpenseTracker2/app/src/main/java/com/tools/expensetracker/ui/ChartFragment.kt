@@ -16,6 +16,7 @@ import com.tools.expensetracker.R
 import com.tools.expensetracker.data.ExpenseDatabase
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.Month
 import java.time.format.TextStyle
 import java.util.*
 
@@ -23,6 +24,7 @@ class ChartFragment : Fragment() {
 
     private lateinit var pieChart: PieChart
     private lateinit var monthSelector: Spinner
+    private lateinit var yearSelector: Spinner
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -31,42 +33,59 @@ class ChartFragment : Fragment() {
         val view = inflater.inflate(R.layout.fragment_chart, container, false)
         pieChart = view.findViewById(R.id.pieChart)
         monthSelector = view.findViewById(R.id.monthSelector)
-        setupMonthSelector()
+        yearSelector = view.findViewById(R.id.yearSelector)
+        setupSelectors()
         return view
     }
 
-    private fun setupMonthSelector() {
-        val months = listOf(
-            "01 - January", "02 - February", "03 - March", "04 - April",
-            "05 - May", "06 - June", "07 - July", "08 - August",
-            "09 - September", "10 - October", "11 - November", "12 - December"
-        )
+    private fun setupSelectors() {
+        val months = Month.values().map {
+            it.getDisplayName(TextStyle.FULL, Locale.getDefault())
+        }
 
-        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, months)
-        monthSelector.adapter = adapter
+        val years = (2020..LocalDate.now().year).map { it.toString() }.reversed()
+
+        val monthAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, months)
+        val yearAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, years)
+
+        monthSelector.adapter = monthAdapter
+        yearSelector.adapter = yearAdapter
 
         val currentMonthIndex = LocalDate.now().monthValue - 1
         monthSelector.setSelection(currentMonthIndex)
+        yearSelector.setSelection(0)
+
+        val reloadChart: () -> Unit = {
+            val monthName = monthSelector.selectedItem.toString()
+            val monthNumber = Month.valueOf(monthName.uppercase()).value
+            val year = yearSelector.selectedItem.toString()
+            loadChartData(monthNumber, year)
+        }
 
         monthSelector.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, pos: Int, id: Long) {
-                val month = months[pos].substring(0, 2)
-                loadChartData(month)
-            }
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) = reloadChart()
             override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
+
+        yearSelector.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) = reloadChart()
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
+
+        reloadChart()
     }
 
-    private fun loadChartData(month: String) {
-        val year = LocalDate.now().year.toString()
+    private fun loadChartData(month: Int, year: String) {
+        val monthStr = "%02d".format(month)
 
         lifecycleScope.launch {
             val dao = ExpenseDatabase.getDatabase(requireContext()).expenseDao()
-            val expenses = dao.getByCurrentMonth(month, year)
+            val expenses = dao.getByCurrentMonth(monthStr, year)
             val grouped = expenses.groupBy { it.category }.mapValues { it.value.sumOf { e -> e.amount } }
 
             val entries = grouped.map { PieEntry(it.value.toFloat(), it.key) }
-            val dataSet = PieDataSet(entries, "Expenses for ${monthToName(month)}")
+            val monthName = Month.of(month).getDisplayName(TextStyle.FULL, Locale.getDefault())
+            val dataSet = PieDataSet(entries, "Expenses for $monthName $year")
             dataSet.colors = listOf(
                 Color.rgb(244, 67, 54),
                 Color.rgb(33, 150, 243),
@@ -78,15 +97,6 @@ class ChartFragment : Fragment() {
             pieChart.setUsePercentValues(true)
             pieChart.description.text = "Monthly Expense Breakdown"
             pieChart.invalidate()
-        }
-    }
-
-    private fun monthToName(month: String): String {
-        return try {
-            val monthInt = month.toInt()
-            LocalDate.of(2024, monthInt, 1).month.getDisplayName(TextStyle.FULL, Locale.getDefault())
-        } catch (e: Exception) {
-            "Unknown"
         }
     }
 }

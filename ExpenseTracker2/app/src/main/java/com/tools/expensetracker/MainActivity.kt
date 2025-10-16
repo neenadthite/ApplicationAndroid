@@ -14,6 +14,12 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.*
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import com.tools.expensetracker.utils.SmsExpenseReader
+import com.google.android.material.color.DynamicColors
 
 class MainActivity : AppCompatActivity() {
 
@@ -27,9 +33,16 @@ class MainActivity : AppCompatActivity() {
     private val dateFmt = DateTimeFormatter.ISO_LOCAL_DATE
     private val categoryList = listOf("Food", "Transport", "Education", "DailyNeeds")
 
+    private val SMS_PERMISSION_CODE = 1001
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        DynamicColors.applyToActivitiesIfAvailable(application)
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        try {
+            setContentView(R.layout.activity_main)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
 
         dateInput = findViewById(R.id.dateInput)
         categorySpinner = findViewById(R.id.categorySpinner)
@@ -37,6 +50,9 @@ class MainActivity : AppCompatActivity() {
         noteInput = findViewById(R.id.noteInput)
         addButton = findViewById(R.id.addButton)
         bottomNav = findViewById(R.id.bottomNav)
+
+        //Check SMS permission
+        checkSmsPermission()
 
         // Date picker
         dateInput.setOnClickListener {
@@ -63,6 +79,16 @@ class MainActivity : AppCompatActivity() {
         categorySpinner.adapter = adapter
 
         addButton.setOnClickListener { addExpense() }
+
+        //Add Button to sync entries from SMS
+        findViewById<Button>(R.id.syncSmsButton).setOnClickListener {
+            lifecycleScope.launch {
+                val smsExpenses = SmsExpenseReader.readBankMessages(this@MainActivity)
+                val dao = ExpenseDatabase.getDatabase(this@MainActivity).expenseDao()
+                for (expense in smsExpenses) dao.insert(expense)
+                Toast.makeText(this@MainActivity, "Imported ${smsExpenses.size} entries!", Toast.LENGTH_LONG).show()
+            }
+        }
 
         // Bottom navigation
         bottomNav.setOnItemSelectedListener { item ->
@@ -122,5 +148,12 @@ class MainActivity : AppCompatActivity() {
         amountInput.text.clear()
         noteInput.text.clear()
         categorySpinner.setSelection(0)
+    }
+
+    private fun checkSmsPermission() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS)
+            != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.READ_SMS), SMS_PERMISSION_CODE)
+        }
     }
 }
