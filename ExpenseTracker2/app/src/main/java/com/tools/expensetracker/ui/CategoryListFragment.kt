@@ -133,10 +133,11 @@ class CategoryListFragment : Fragment() {
                     note = noteInput.text.toString()
                 )
                 lifecycleScope.launch {
-                    dao.insert(updated)
+                    dao.update(updated)
                     val month = expense.date.monthValue
                     loadExpensesByMonth(month, expense.date.year.toString())
                     Toast.makeText(requireContext(), "Updated!", Toast.LENGTH_SHORT).show()
+                    refreshList()
                 }
             }
             .setNegativeButton("Cancel", null)
