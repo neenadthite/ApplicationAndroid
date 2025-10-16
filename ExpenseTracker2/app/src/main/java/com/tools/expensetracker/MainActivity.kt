@@ -153,6 +153,7 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     Toast.makeText(this@MainActivity, "Duplicate entry skipped!", Toast.LENGTH_SHORT).show()
                 }
+
             } catch (e: Exception) {
                 Toast.makeText(this@MainActivity, "Invalid input", Toast.LENGTH_SHORT).show()
             }

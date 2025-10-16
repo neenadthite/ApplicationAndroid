@@ -1,7 +1,6 @@
 package com.tools.expensetracker.data
 
 import androidx.room.Dao
-import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.OnConflictStrategy
@@ -27,22 +26,4 @@ interface ExpenseDao {
         WHERE amount = :amount AND note = :note AND category = :category
     """)
     suspend fun exists( amount: Double, note: String, category: String): Int
-
-    // Auto-updating Flow for all expenses
-    @Query("SELECT * FROM expenses ORDER BY date DESC")
-    fun getAllFlow(): kotlinx.coroutines.flow.Flow<List<Expense>>
-
-    // For month/year filters (used in CategoryListFragment)
-    @Query("""
-        SELECT * FROM expenses 
-        WHERE strftime('%m', date / 1000, 'unixepoch') = :month 
-        AND strftime('%Y', date / 1000, 'unixepoch') = :year
-        ORDER BY date DESC
-    """)
-    fun getByMonthFlow(month: String, year: String): kotlinx.coroutines.flow.Flow<List<Expense>>
-
-    //Delete a single expense
-    @Delete
-    suspend fun delete(expense: Expense)
-
 }
