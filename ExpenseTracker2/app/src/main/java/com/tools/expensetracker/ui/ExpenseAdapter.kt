@@ -44,4 +44,11 @@ class ExpenseAdapter(
     }
 
     override fun getItemCount(): Int = expenses.size
+
+    fun removeExpense(position: Int): Expense {
+        val expense = expenses.toMutableList().removeAt(position)
+        notifyItemRemoved(position)
+        return expense
+    }
 }
+

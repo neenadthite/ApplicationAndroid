@@ -7,11 +7,13 @@ import android.view.*
 import android.widget.*
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.tools.expensetracker.R
 import com.tools.expensetracker.data.Expense
 import com.tools.expensetracker.data.ExpenseDatabase
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.Month
@@ -85,19 +87,44 @@ class CategoryListFragment : Fragment() {
         val monthStr = "%02d".format(month)
 
         lifecycleScope.launch {
-            val list = dao.getByCurrentMonth(monthStr, year)
-            val total = list.sumOf { it.amount }
+            dao.getByMonthFlow(monthStr, year).collectLatest { list ->
+                val total = list.sumOf { it.amount }
 
-            recyclerView.adapter = ExpenseAdapter(list) { expense ->
-                showEditDialog(expense)
-            }
+                val adapter = ExpenseAdapter(list.toMutableList()) { expense ->
+                    showEditDialog(expense)
+                }
+                recyclerView.adapter = adapter
 
-            totalText.text = "Total for $year ${Month.of(month).getDisplayName(TextStyle.FULL, Locale.getDefault())}: ₹%.2f".format(total)
+                // Swipe-to-delete
+                val swipeToDeleteCallback = object :
+                    ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT) {
+                    override fun onMove(
+                        recyclerView: RecyclerView,
+                        viewHolder: RecyclerView.ViewHolder,
+                        target: RecyclerView.ViewHolder
+                    ): Boolean = false
 
-            when {
-                total < 5000 -> totalText.setBackgroundColor(Color.parseColor("#C8E6C9"))
-                total < 10000 -> totalText.setBackgroundColor(Color.parseColor("#FFF59D"))
-                else -> totalText.setBackgroundColor(Color.parseColor("#FFCDD2"))
+                    override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
+                        val position = viewHolder.adapterPosition
+                        val expense = adapter.removeExpense(position)
+
+                        lifecycleScope.launch {
+                            dao.delete(expense)
+                            Toast.makeText(requireContext(), "Deleted!", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+
+                ItemTouchHelper(swipeToDeleteCallback).attachToRecyclerView(recyclerView)
+
+                // ✅ Update total box
+                totalText.text = "Total for ${Month.of(month).getDisplayName(TextStyle.FULL, Locale.getDefault())} $year: ₹%.2f".format(total)
+
+                when {
+                    total < 5000 -> totalText.setBackgroundColor(Color.parseColor("#C8E6C9"))
+                    total < 10000 -> totalText.setBackgroundColor(Color.parseColor("#FFF59D"))
+                    else -> totalText.setBackgroundColor(Color.parseColor("#FFCDD2"))
+                }
             }
         }
     }
