@@ -99,6 +99,8 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
                 Toast.makeText(this@MainActivity, "Imported ${addedCount} entries and Skipped ${skippedCount} entries!", Toast.LENGTH_LONG).show()
+                val Categoryfragment = supportFragmentManager.findFragmentByTag("CategoryListFragment") as? CategoryListFragment
+                Categoryfragment?.refreshList()
             }
         }
 
@@ -107,14 +109,14 @@ class MainActivity : AppCompatActivity() {
             when (item.itemId) {
                 R.id.nav_all -> {
                     supportFragmentManager.beginTransaction()
-                        .replace(R.id.fragmentContainer, CategoryListFragment())
+                        .replace(R.id.fragmentContainer, CategoryListFragment(),"CategoryListFragment")
                         .commit()
                     true
                 }
 
                 R.id.nav_chart -> {
                     supportFragmentManager.beginTransaction()
-                        .replace(R.id.fragmentContainer, ChartFragment())
+                        .replace(R.id.fragmentContainer, ChartFragment(),"ChartFragment")
                         .commit()
                     true
                 }
@@ -153,6 +155,8 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     Toast.makeText(this@MainActivity, "Duplicate entry skipped!", Toast.LENGTH_SHORT).show()
                 }
+                val fragment = supportFragmentManager.findFragmentByTag("CategoryListFragment") as? CategoryListFragment
+                fragment?.refreshList()
 
             } catch (e: Exception) {
                 Toast.makeText(this@MainActivity, "Invalid input", Toast.LENGTH_SHORT).show()

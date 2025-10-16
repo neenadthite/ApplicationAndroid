@@ -161,7 +161,7 @@ class CategoryListFragment : Fragment() {
     }
 
     // Refresh after edit/delete
-    private fun refreshList() {
+    fun refreshList() {
         val selectedMonthName = monthSelector.selectedItem.toString()
         val selectedMonthNumber = Month.valueOf(selectedMonthName.uppercase()).value
         val selectedYear = yearSelector.selectedItem.toString()
