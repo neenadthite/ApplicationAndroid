@@ -90,7 +90,8 @@ class ChartFragment : Fragment() {
                 Color.rgb(244, 67, 54),
                 Color.rgb(33, 150, 243),
                 Color.rgb(76, 175, 80),
-                Color.rgb(255, 193, 7)
+                Color.rgb(255, 193, 7),
+                Color.rgb(156, 39, 176)   // Purple (Distinct)
             )
             val data = PieData(dataSet)
             pieChart.data = data
