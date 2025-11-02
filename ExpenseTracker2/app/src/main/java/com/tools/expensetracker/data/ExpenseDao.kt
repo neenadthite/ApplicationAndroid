@@ -46,4 +46,13 @@ interface ExpenseDao {
 
     @Query("DELETE FROM budgets WHERE month = :month AND year = :year")
     suspend fun deleteBudget(month: String, year: String)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCategoryBudget(budget: CategoryBudget)
+
+    @Query("SELECT * FROM category_budgets WHERE month = :month AND year = :year")
+    suspend fun getCategoryBudgets(month: String, year: String): List<CategoryBudget>
+
+    @Query("DELETE FROM category_budgets WHERE month = :month AND year = :year")
+    suspend fun deleteCategoryBudgets(month: String, year: String)
 }
