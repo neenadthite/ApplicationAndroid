@@ -87,14 +87,15 @@ class MainActivity : AppCompatActivity() {
 // find latest before today
                 val prev = repo.latestBefore(today)
                 if (prev.isNotEmpty()) {
-// copy previous day's tasks to today (reset elapsed/run state)
+// copy previous day's tasks to today (reset elapsed/run state, keep notes)
                     val copies = prev.map { e ->
                         TaskEntity(
                             title = e.title,
                             elapsedMillis = 0L,
                             running = false,
                             lastStart = 0L,
-                            date = today
+                            date = today,
+                            notes = e.notes
                         )
                     }
                     repo.addTasks(copies)
@@ -115,13 +116,15 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-    // Adds dialog that also accepts initial timing in hh:mm:ss (optional)
+    // Adds dialog that also accepts initial timing in hh:mm:ss (optional) and notes
     private fun addTaskDialog() {
         val container = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(20, 8, 20, 8) }
         val titleInput = EditText(this).apply { hint = "Task title"; inputType = InputType.TYPE_CLASS_TEXT }
         val timeInput = EditText(this).apply { hint = "Initial time (HH:MM:SS) - optional"; inputType = InputType.TYPE_CLASS_TEXT }
+        val notesInput = EditText(this).apply { hint = "Notes (optional)"; inputType = InputType.TYPE_CLASS_TEXT }
         container.addView(titleInput)
         container.addView(timeInput)
+        container.addView(notesInput)
 
 
         AlertDialog.Builder(this)
@@ -130,9 +133,10 @@ class MainActivity : AppCompatActivity() {
             .setPositiveButton("Add") { _, _ ->
                 val title = titleInput.text.toString().ifBlank { "Untitled" }
                 val timeText = timeInput.text.toString().trim()
+                val notes = notesInput.text.toString().trim().ifBlank { null }
                 val millis = if (timeText.isBlank()) 0L else parseHmsToMillis(timeText)
                 lifecycleScope.launch {
-                    val id = repo.addTask(TaskEntity(title = title, date = selectedDateIso, elapsedMillis = millis))
+                    repo.addTask(TaskEntity(title = title, date = selectedDateIso, elapsedMillis = millis, notes = notes))
 // reload
                     loadTasksForDate(selectedDateIso)
                 }
@@ -142,14 +146,16 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-    // Edit dialog now allows changing title AND elapsed time (HH:MM:SS)
+    // Edit dialog now allows changing title, elapsed time (HH:MM:SS), and notes
     private fun editTaskDialog(task: Task) {
         val container = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(20, 8, 20, 8) }
         val titleInput = EditText(this).apply { setText(task.title); inputType = InputType.TYPE_CLASS_TEXT }
         val timeInput = EditText(this).apply { setText(formatMillis(task.elapsedMillis)); inputType = InputType.TYPE_CLASS_TEXT }
+        val notesInput = EditText(this).apply { setText(task.notes ?: ""); inputType = InputType.TYPE_CLASS_TEXT }
         val info = TextView(this).apply { text = "Enter total elapsed time (HH:MM:SS). If you want to adjust while running, stopping will store the current running time first." }
             container.addView(titleInput)
             container.addView(timeInput)
+            container.addView(notesInput)
             container.addView(info)
 
 
@@ -158,16 +164,17 @@ class MainActivity : AppCompatActivity() {
                 .setView(container)
                 .setPositiveButton("Save") { _, _ ->
                     val newTitle = titleInput.text.toString().ifBlank { task.title }
+                    val notes = notesInput.text.toString().trim().ifBlank { null }
                     val timeText = timeInput.text.toString().trim()
                     val millis = parseHmsToMillisSafe(timeText, task.elapsedMillis)
                     lifecycleScope.launch {
-                        repo.updateTask(TaskEntity(id = task.id, title = newTitle, elapsedMillis = millis, running = false, lastStart = 0L, date = task.date))
+                        repo.updateTask(TaskEntity(id = task.id, title = newTitle, elapsedMillis = millis, running = false, lastStart = 0L, date = task.date, notes = notes))
                         loadTasksForDate(selectedDateIso)
                     }
                 }
                 .setNegativeButton("Cancel", null)
                 .show()
-    }
+        }
 
 
 private fun deleteTask(task: Task) {

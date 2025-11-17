@@ -13,7 +13,8 @@ data class TaskEntity(
     @ColumnInfo(name = "running") var running: Boolean = false,
     @ColumnInfo(name = "lastStart") var lastStart: Long = 0L,
 // date stored as ISO yyyy-MM-dd
-    @ColumnInfo(name = "date") val date: String
+    @ColumnInfo(name = "date") val date: String,
+    @ColumnInfo(name = "notes") var notes: String? = null
 )
 
 
@@ -24,5 +25,6 @@ data class Task(
     var elapsedMillis: Long = 0L,
     var running: Boolean = false,
     var lastStart: Long = 0L,
-    val date: String
+    val date: String,
+    var notes: String? = null
 )
