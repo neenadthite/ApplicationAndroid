@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">WorkLog</string>
+    <string name="add_task">Add Task</string>
+</resources>
