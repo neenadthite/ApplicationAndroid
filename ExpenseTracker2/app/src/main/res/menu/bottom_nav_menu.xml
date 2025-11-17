@@ -11,4 +11,14 @@
         android:icon="@android:drawable/ic_menu_agenda"
         android:title="All" />
 
+    <item
+        android:id="@+id/nav_budget"
+        android:title="Budget"
+        android:icon="@drawable/ic_budget" />
+
+    <item
+        android:id="@+id/nav_category_budget"
+        android:title="Category Budget"
+        android:icon="@drawable/ic_bar_chart" />
+
 </menu>

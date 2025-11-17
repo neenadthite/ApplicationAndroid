@@ -36,4 +36,23 @@ interface ExpenseDao {
     // Delete a specific expense entry.
     @Delete
     suspend fun delete(expense: Expense)
+
+    // Budget management
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertBudget(budget: Budget)
+
+    @Query("SELECT * FROM budgets WHERE month = :month AND year = :year LIMIT 1")
+    suspend fun getBudget(month: String, year: String): Budget?
+
+    @Query("DELETE FROM budgets WHERE month = :month AND year = :year")
+    suspend fun deleteBudget(month: String, year: String)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCategoryBudget(budget: CategoryBudget)
+
+    @Query("SELECT * FROM category_budgets WHERE month = :month AND year = :year")
+    suspend fun getCategoryBudgets(month: String, year: String): List<CategoryBudget>
+
+    @Query("DELETE FROM category_budgets WHERE month = :month AND year = :year")
+    suspend fun deleteCategoryBudgets(month: String, year: String)
 }

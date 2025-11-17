@@ -20,6 +20,8 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.tools.expensetracker.utils.SmsExpenseReader
 import com.google.android.material.color.DynamicColors
+import com.tools.expensetracker.ui.BudgetFragment
+import com.tools.expensetracker.ui.CategoryBudgetFragment
 
 class MainActivity : AppCompatActivity() {
 
@@ -117,6 +119,20 @@ class MainActivity : AppCompatActivity() {
                 R.id.nav_chart -> {
                     supportFragmentManager.beginTransaction()
                         .replace(R.id.fragmentContainer, ChartFragment(),"ChartFragment")
+                        .commit()
+                    true
+                }
+
+                R.id.nav_budget -> {
+                    supportFragmentManager.beginTransaction()
+                        .replace(R.id.fragmentContainer, BudgetFragment())
+                        .commit()
+                    true
+                }
+
+                R.id.nav_category_budget -> {
+                    supportFragmentManager.beginTransaction()
+                        .replace(R.id.fragmentContainer, CategoryBudgetFragment())
                         .commit()
                     true
                 }
