@@ -8,11 +8,13 @@ import android.view.View
 import android.widget.Button
 import android.widget.CalendarView
 import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.example.worklog.TaskAdapter
+import com.tools.worklog.TaskAdapter
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -113,15 +115,24 @@ class MainActivity : AppCompatActivity() {
     }
 
 
+    // Adds dialog that also accepts initial timing in hh:mm:ss (optional)
     private fun addTaskDialog() {
-        val input = EditText(this).apply { inputType = InputType.TYPE_CLASS_TEXT }
+        val container = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(20, 8, 20, 8) }
+        val titleInput = EditText(this).apply { hint = "Task title"; inputType = InputType.TYPE_CLASS_TEXT }
+        val timeInput = EditText(this).apply { hint = "Initial time (HH:MM:SS) - optional"; inputType = InputType.TYPE_CLASS_TEXT }
+        container.addView(titleInput)
+        container.addView(timeInput)
+
+
         AlertDialog.Builder(this)
             .setTitle("New Task for $selectedDateIso")
-            .setView(input)
+            .setView(container)
             .setPositiveButton("Add") { _, _ ->
-                val title = input.text.toString().ifBlank { "Untitled" }
+                val title = titleInput.text.toString().ifBlank { "Untitled" }
+                val timeText = timeInput.text.toString().trim()
+                val millis = if (timeText.isBlank()) 0L else parseHmsToMillis(timeText)
                 lifecycleScope.launch {
-                    val id = repo.addTask(TaskEntity(title = title, date = selectedDateIso))
+                    val id = repo.addTask(TaskEntity(title = title, date = selectedDateIso, elapsedMillis = millis))
 // reload
                     loadTasksForDate(selectedDateIso)
                 }
@@ -131,21 +142,32 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-private fun editTaskDialog(task: Task) {
-    val input = EditText(this).apply { setText(task.title); inputType = InputType.TYPE_CLASS_TEXT }
-    AlertDialog.Builder(this)
-        .setTitle("Edit Task")
-        .setView(input)
-        .setPositiveButton("Save") { _, _ ->
-            val newTitle = input.text.toString().ifBlank { task.title }
-            lifecycleScope.launch {
-                repo.updateTask(TaskEntity(id = task.id, title = newTitle, elapsedMillis = task.elapsedMillis, running = task.running, lastStart = task.lastStart, date = task.date))
-                loadTasksForDate(selectedDateIso)
-            }
-        }
-        .setNegativeButton("Cancel", null)
-        .show()
-}
+    // Edit dialog now allows changing title AND elapsed time (HH:MM:SS)
+    private fun editTaskDialog(task: Task) {
+        val container = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(20, 8, 20, 8) }
+        val titleInput = EditText(this).apply { setText(task.title); inputType = InputType.TYPE_CLASS_TEXT }
+        val timeInput = EditText(this).apply { setText(formatMillis(task.elapsedMillis)); inputType = InputType.TYPE_CLASS_TEXT }
+        val info = TextView(this).apply { text = "Enter total elapsed time (HH:MM:SS). If you want to adjust while running, stopping will store the current running time first." }
+            container.addView(titleInput)
+            container.addView(timeInput)
+            container.addView(info)
+
+
+            AlertDialog.Builder(this)
+                .setTitle("Edit Task")
+                .setView(container)
+                .setPositiveButton("Save") { _, _ ->
+                    val newTitle = titleInput.text.toString().ifBlank { task.title }
+                    val timeText = timeInput.text.toString().trim()
+                    val millis = parseHmsToMillisSafe(timeText, task.elapsedMillis)
+                    lifecycleScope.launch {
+                        repo.updateTask(TaskEntity(id = task.id, title = newTitle, elapsedMillis = millis, running = false, lastStart = 0L, date = task.date))
+                        loadTasksForDate(selectedDateIso)
+                    }
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+    }
 
 
 private fun deleteTask(task: Task) {
@@ -172,6 +194,40 @@ private fun toggleTask(task: Task) {
     }
 }
 
+        // Utility: parse HH:MM:SS to millis. Throws for bad format.
+        private fun parseHmsToMillis(hms: String): Long {
+            val parts = hms.split(":").map { it.trim() }
+            if (parts.size !in 1..3) throw IllegalArgumentException("Bad time format")
+            val reversed = parts.reversed()
+            var seconds = 0L
+            try {
+                if (reversed.size >= 1) seconds += reversed[0].toLong()
+                if (reversed.size >= 2) seconds += reversed[1].toLong() * 60
+                if (reversed.size == 3) seconds += reversed[2].toLong() * 3600
+            } catch (e: NumberFormatException) {
+                throw IllegalArgumentException("Bad number in time")
+            }
+            return seconds * 1000
+        }
+
+
+        private fun parseHmsToMillisSafe(hms: String, fallback: Long): Long {
+            return try {
+                if (hms.isBlank()) fallback else parseHmsToMillis(hms)
+            } catch (e: Exception) {
+// if user enters bad value, keep existing
+                fallback
+            }
+        }
+
+
+        private fun formatMillis(ms: Long): String {
+            val totalSeconds = ms / 1000
+            val seconds = totalSeconds % 60
+            val minutes = (totalSeconds / 60) % 60
+            val hours = totalSeconds / 3600
+            return String.format("%02d:%02d:%02d", hours, minutes, seconds)
+        }
 
 companion object {
     private val dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd")
